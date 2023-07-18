@@ -11,11 +11,14 @@ import models, schemas
 def get_room_reservations(db: Session, room_id: int):
     return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id).all()
 
+def get_reservations_by_date(db: Session, room_id: int, date: str):
+    return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id, models.Reservation.date == date).all()
+
 def create_reservation(db: Session, room_id: int, start_hour: int, end_hour: int):
     return db.query
 
-def create_reservation(db: Session, room_id: int, from_time: str, to_time: str, reservation_date: date):
-    reservation = models.Reservation(room_id=room_id, from_time=from_time, to_time=to_time, date=reservation_date)
+def create_reservation(db: Session, room_id: int, from_time: str, to_time: str, title: str, description: str, reservation_date: date):
+    reservation = models.Reservation(room_id=room_id, from_time=from_time, to_time=to_time, date=reservation_date, title=title, description=description)
     db.add(reservation)
     db.commit()
     db.refresh(reservation)

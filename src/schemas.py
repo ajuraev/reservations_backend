@@ -20,6 +20,8 @@ class Reservation(ReservationBase):
     date: date
     from_time: str
     to_time: str
+    title: str
+    description: str
 
     class Config:
         orm_mode = True

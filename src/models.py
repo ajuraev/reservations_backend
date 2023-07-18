@@ -16,6 +16,8 @@ class Reservation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date)
+    title = Column(String)
+    description = Column(String)
     from_time = Column(String)
     to_time = Column(String)
     room_id = Column(Integer, ForeignKey("rooms.id"))

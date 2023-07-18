@@ -47,15 +47,23 @@ def read_room_reservations(room_id: int, db: Session = Depends(get_db)):
     reservations = crud.get_room_reservations(db, room_id)
     return reservations
 
+@app.get("/reservations/{room_id}/{date}", response_model=list[schemas.Reservation])
+def read_room_reservations_by_date(room_id: int, date: date, db: Session = Depends(get_db)):
+    reservations = crud.get_reservations_by_date(db, room_id, date)
+    return reservations
+
 @app.post("/reservations")
 async def create_reservation_endpoint(request: Request, db: Session = Depends(get_db)):
     reservation_data = await request.json()
     room_id = reservation_data.get("room_id")
     from_time = reservation_data.get("from_time")
     to_time = reservation_data.get("to_time")
+    title = reservation_data.get("title")
+    description = reservation_data.get("description")
+
     reservation_date = reservation_data.get("reservation_date")
 
-    reservation = crud.create_reservation(db, room_id, from_time, to_time, reservation_date)
+    reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date)
     return {"message": "Reservation created successfully", "reservation": reservation}
 
 
