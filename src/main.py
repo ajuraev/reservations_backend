@@ -70,7 +70,7 @@ def verify_token(token):
 async def get_google_token(auth_code: AuthCode):
     # This creates the Flow using a client_secrets.json file
     flow = Flow.from_client_secrets_file(
-        "client_secret.json",
+        "/etc/secrets/client_secret.json",
         scopes=[
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/userinfo.email",
