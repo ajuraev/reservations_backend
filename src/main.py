@@ -79,7 +79,7 @@ async def get_google_token(auth_code: AuthCode):
             "https://www.googleapis.com/auth/calendar.events",
             "openid"
         ],
-        redirect_uri='https://reservations-56ei.onrender.com/'
+        redirect_uri='https://reservations-front.vercel.app/'
     )
 
     flow.fetch_token(code=auth_code.code)
