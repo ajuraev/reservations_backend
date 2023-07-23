@@ -1,7 +1,8 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Date
+from sqlalchemy import Table, Boolean, Column, ForeignKey, Integer, String, Date
 from sqlalchemy.orm import relationship
 
 from database import Base
+
 
 
 class Room(Base):
@@ -9,6 +10,25 @@ class Room(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     reservations = relationship("Reservation", back_populates="room")
+
+
+# Association Table
+reservation_participant_table = Table('reservation_participant', Base.metadata,
+    Column('reservation_id', ForeignKey('reservations.id'), primary_key=True),
+    Column('participant_id', ForeignKey('participants.id'), primary_key=True)
+)
+
+
+class Participant(Base):
+    __tablename__ = "participants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    reservations = relationship(
+        "Reservation",
+        secondary=reservation_participant_table,
+        back_populates="participants",
+    )
 
 
 class Reservation(Base):
@@ -23,3 +43,8 @@ class Reservation(Base):
     room_id = Column(Integer, ForeignKey("rooms.id"))
 
     room = relationship("Room", back_populates="reservations")
+    participants = relationship(
+        "Participant",
+        secondary=reservation_participant_table,
+        back_populates="reservations",
+    )
