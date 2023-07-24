@@ -69,8 +69,12 @@ def verify_token(token):
 @app.post("/auth/google")
 async def get_google_token(auth_code: AuthCode):
     # This creates the Flow using a client_secrets.json file
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+
+    relative_path = "etc/secrets/client_secret.json"
+    client_secret_path = os.path.normpath(os.path.join(current_directory, relative_path))
     flow = Flow.from_client_secrets_file(
-        "/etc/secrets/client_secret.json",
+        "client_secret.json",
         scopes=[
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/userinfo.email",
@@ -79,7 +83,7 @@ async def get_google_token(auth_code: AuthCode):
             "https://www.googleapis.com/auth/calendar.events",
             "openid"
         ],
-        redirect_uri='https://reservations-front.vercel.app/'
+        redirect_uri='http://localhost:3000'
     )
 
     flow.fetch_token(code=auth_code.code)
