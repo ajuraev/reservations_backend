@@ -85,7 +85,7 @@ async def get_google_token(auth_code: AuthCode):
         ],
         redirect_uri='https://reservations-front.vercel.app'
     )
-
+    #https://reservations-front.vercel.app
     flow.fetch_token(code=auth_code.code)
 
     credentials = flow.credentials
@@ -229,17 +229,28 @@ def get_emails_from_token(auth_info: AuthInfo):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+@app.get("/reservations/{reservation_id}", response_model=schemas.Reservation)
+def read_reservation_by_id(reservation_id: int, db: Session = Depends(get_db)):
+    reservation = crud.get_reservation_by_id(db, reservation_id)
+
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    return reservation
+
+@app.get("/reservations", response_model=list[schemas.Reservation])
+def read_reservations_by_room(room_id: int = None, db: Session = Depends(get_db)):
+    reservations = crud.get_reservations_by_room(db, room_id)
+
+    return reservations
+
 
 @app.get("/rooms/", response_model=list[schemas.Room])
 def read_rooms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rooms = crud.get_rooms(db, skip=skip, limit=limit)
     return rooms
 
-@app.get("/reservations/{room_id}", response_model=list[schemas.Reservation])
-def read_room_reservations(room_id: int, db: Session = Depends(get_db)):
-    reservations = crud.get_room_reservations(db, room_id)
 
-    return reservations
 
 @app.get("/reservations/{room_id}/{date}", response_model=list[schemas.Reservation])
 def read_room_reservations_by_date(room_id: int, date: date, db: Session = Depends(get_db)):

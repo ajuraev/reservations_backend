@@ -7,6 +7,15 @@ import models, schemas
 def get_room_reservations(db: Session, room_id: int):
     return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id).all()
 
+def get_reservation_by_id(db: Session, reservation_id: int):
+    return db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
+
+def get_reservations_by_room(db: Session, room_id: int):
+    if room_id is None:
+        return db.query(models.Reservation).all()
+    else:
+        return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id).all()
+    
 def get_reservations_by_date(db: Session, room_id: int, date: str):
     return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id, models.Reservation.date == date).all()
 
