@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import date
 from typing import List
 
@@ -10,11 +10,14 @@ def get_room_reservations(db: Session, room_id: int):
 def get_reservation_by_id(db: Session, reservation_id: int):
     return db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
 
-def get_reservations_by_room(db: Session, room_id: int):
+def get_reservations_by_room(db: Session, room_id: int, all: bool):
     if room_id is None:
-        return db.query(models.Reservation).all()
+        return db.query(models.Reservation).options(joinedload(models.Reservation.participants)).all()
+    elif all:
+        return db.query(models.Reservation).options(joinedload(models.Reservation.participants)).join(models.Reservation.room).filter(models.Room.id == room_id).all()
     else:
-        return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id).all()
+        return db.query(models.Reservation).options(joinedload(models.Reservation.participants)).join(models.Reservation.room).filter(models.Room.id == room_id, models.Reservation.date >= date.today()).all()
+    
     
 def get_reservations_by_date(db: Session, room_id: int, date: str):
     return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id, models.Reservation.date == date).all()

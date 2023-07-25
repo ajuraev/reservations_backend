@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 from datetime import date
 from fastapi.middleware.cors import CORSMiddleware
@@ -87,6 +87,7 @@ async def get_google_token(auth_code: AuthCode):
             redirect_uri='https://reservations-front.vercel.app'
         )
         #https://reservations-front.vercel.app
+        #http://localhost:3000
         flow.fetch_token(code=auth_code.code)
 
         credentials = flow.credentials
@@ -241,11 +242,12 @@ def read_reservation_by_id(reservation_id: int, db: Session = Depends(get_db)):
 
     return reservation
 
-@app.get("/reservations", response_model=list[schemas.Reservation])
-def read_reservations_by_room(room_id: int = None, db: Session = Depends(get_db)):
-    reservations = crud.get_reservations_by_room(db, room_id)
+@app.get("/reservations")
+def read_reservations_by_room(room_id: int = None, all: bool = Query(None), db: Session = Depends(get_db)):
+    reservations = crud.get_reservations_by_room(db, room_id, all)
 
     return reservations
+
 
 
 @app.get("/rooms/", response_model=list[schemas.Room])
