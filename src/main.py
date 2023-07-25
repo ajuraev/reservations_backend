@@ -68,36 +68,39 @@ def verify_token(token):
     
 @app.post("/auth/google")
 async def get_google_token(auth_code: AuthCode):
-    # This creates the Flow using a client_secrets.json file
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+    try:
+        # This creates the Flow using a client_secrets.json file
+        current_directory = os.path.dirname(os.path.abspath(__file__))
 
-    relative_path = "etc/secrets/client_secret.json"
-    client_secret_path = os.path.normpath(os.path.join(current_directory, relative_path))
-    flow = Flow.from_client_secrets_file(
-        "client_secret.json",
-        scopes=[
-            "https://www.googleapis.com/auth/userinfo.profile",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/contacts",
-            "https://www.googleapis.com/auth/contacts.other.readonly",
-            "https://www.googleapis.com/auth/calendar.events",
-            "openid"
-        ],
-        redirect_uri='https://reservations-front.vercel.app'
-    )
-    #https://reservations-front.vercel.app
-    flow.fetch_token(code=auth_code.code)
+        relative_path = "etc/secrets/client_secret.json"
+        client_secret_path = os.path.normpath(os.path.join(current_directory, relative_path))
+        flow = Flow.from_client_secrets_file(
+            "client_secret.json",
+            scopes=[
+                "https://www.googleapis.com/auth/userinfo.profile",
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/contacts",
+                "https://www.googleapis.com/auth/contacts.other.readonly",
+                "https://www.googleapis.com/auth/calendar.events",
+                "openid"
+            ],
+            redirect_uri='https://reservations-front.vercel.app'
+        )
+        #https://reservations-front.vercel.app
+        flow.fetch_token(code=auth_code.code)
 
-    credentials = flow.credentials
+        credentials = flow.credentials
 
-    return JSONResponse(content={
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    })
+        return JSONResponse(content={
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes
+        })
+    except Exception as e:
+        print(e)
 
 def is_valid_email(email):
     email_regex = r"[^@]+@[^@]+\.[^@]+"  # This is a simple email regex
