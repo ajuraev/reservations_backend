@@ -53,13 +53,20 @@ class AuthInfo(BaseModel):
     access_token: str
     client_id: str
     refresh_token: str
-    client_secret: str
+    client_secret: str  
 
-@app.get("/verify/")
-def verify_token(token):
+@app.post("/verify/")
+async def verify_token(request: Request):
     try:
-        response = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'access_token': token})
+        token_data = await request.json()
+        access_token = token_data.get("token")
+
+        print(access_token)
+
+        response = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'access_token': access_token})
         if response.status_code == 200:
+            users = get_user_emails(token_data)
+            return {"users": users}
             return response.json()
         else:
             raise Exception('Token is invalid')
@@ -109,16 +116,17 @@ def is_valid_email(email):
 
 def get_user_emails(auth_info):
     # Initialize the Google API client with the access token
-    creds = Credentials.from_authorized_user_info({
-        'access_token': auth_info.access_token,
-        'client_id' : auth_info.client_id,
-        'refresh_token' : auth_info.refresh_token,
-        'client_secret' : auth_info.client_secret
-        })
-    service = build('people', 'v1', credentials=creds)
+    try:
+        
+        creds = Credentials.from_authorized_user_info({
+            'access_token': auth_info.get("token"),
+            'client_id' : auth_info.get("client_id"),
+            'refresh_token' : auth_info.get("refresh_token"),
+            'client_secret' : auth_info.get("client_secret")
+            })
+        service = build('people', 'v1', credentials=creds)
 
     
-    try:
         #create_event(auth_info, None)
         users = []
 
@@ -225,13 +233,13 @@ def create_event(auth_info, res_data):
     except Exception as e:
         print(e)
 
-@app.post("/user/emails/")
-def get_emails_from_token(auth_info: AuthInfo):
-    try:
-        users = get_user_emails(auth_info)
-        return {"users": users}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/user/emails/")
+# def get_emails_from_token(auth_info: AuthInfo):
+#     try:
+#         users = get_user_emails(auth_info)
+#         return {"users": users}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/reservations/{reservation_id}", response_model=schemas.Reservation)
 def read_reservation_by_id(reservation_id: int, db: Session = Depends(get_db)):
@@ -257,25 +265,28 @@ def read_rooms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 
 
-@app.get("/reservations/{room_id}/{date}", response_model=list[schemas.Reservation])
-def read_room_reservations_by_date(room_id: int, date: date, db: Session = Depends(get_db)):
-    reservations = crud.get_reservations_by_date(db, room_id, date)
-    return reservations
+# @app.get("/reservations/{room_id}/{date}", response_model=list[schemas.Reservation])
+# def read_room_reservations_by_date(room_id: int, date: date, db: Session = Depends(get_db)):
+#     reservations = crud.get_reservations_by_date(db, room_id, date)
+#     return reservations
 
 @app.post("/reservations")
 async def create_reservation_endpoint(request: Request, db: Session = Depends(get_db)):
-    reservation_data = await request.json()
-    room_id = reservation_data.get("room_id")
-    from_time = reservation_data.get("from_time")
-    to_time = reservation_data.get("to_time")
-    title = reservation_data.get("title")
-    description = reservation_data.get("description")
-    participants = reservation_data.get("participants")
+    try:
+        reservation_data = await request.json()
+        room_id = reservation_data.get("room_id")
+        from_time = reservation_data.get("from_time")
+        to_time = reservation_data.get("to_time")
+        title = reservation_data.get("title")
+        description = reservation_data.get("description")
+        participants = reservation_data.get("participants")
 
-    token = reservation_data.get("access_token")
+        token = reservation_data.get("access_token")
 
-    reservation_date = reservation_data.get("reservation_date")
+        reservation_date = reservation_data.get("reservation_date")
 
-    reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants)
-    create_event(token, reservation_data)
-    return {"message": "Reservation created successfully", "reservation": reservation}
+        reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants)
+        create_event(token, reservation_data)
+        return {"message": "Reservation created successfully", "reservation": reservation}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
