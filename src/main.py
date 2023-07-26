@@ -49,38 +49,22 @@ def get_db():
 class AuthCode(BaseModel):
     code: str
 
-class AuthInfo(BaseModel):
-    access_token: str
-    client_id: str
-    refresh_token: str
-    client_secret: str  
+@app.get("/verify/")
+async def verify_token(token: str = None, refresh_token: str = None):
+    # os.environ["CLIENT_ID"] = "472393125983-vhdijrojcjtj8n0h1dvcpejghn3td3k3.apps.googleusercontent.com"
+    # os.environ["CLIENT_SECRET"] = "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"
 
-@app.post("/verify/")
-async def verify_token(request: Request):
-    try:
-        token_data = await request.json()
-        access_token = token_data.get("token")
-
-        print(access_token)
-
-        response = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'access_token': access_token})
-        if response.status_code == 200:
-            users = get_user_emails(token_data)
-            return {"users": users}
-            return response.json()
-        else:
-            raise Exception('Token is invalid')
-    except Exception as e:
-        print(e)
+    response = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'access_token': token})
+    if response.status_code == 200:
+        users = get_user_emails({"token": token, "refresh_token": refresh_token})
+        return {"users": users}
+    else:
+        raise HTTPException(status_code=400, detail="Token is invalid")
     
 @app.post("/auth/google")
 async def get_google_token(auth_code: AuthCode):
     try:
         # This creates the Flow using a client_secrets.json file
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-
-        relative_path = "etc/secrets/client_secret.json"
-        client_secret_path = os.path.normpath(os.path.join(current_directory, relative_path))
         flow = Flow.from_client_secrets_file(
             "client_secret.json",
             scopes=[
@@ -102,10 +86,6 @@ async def get_google_token(auth_code: AuthCode):
         return JSONResponse(content={
             'token': credentials.token,
             'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes
         })
     except Exception as e:
         print(e)
@@ -116,13 +96,14 @@ def is_valid_email(email):
 
 def get_user_emails(auth_info):
     # Initialize the Google API client with the access token
+    
     try:
         
         creds = Credentials.from_authorized_user_info({
             'access_token': auth_info.get("token"),
-            'client_id' : auth_info.get("client_id"),
+            'client_id' : os.environ.get('CLIENT_ID'),
             'refresh_token' : auth_info.get("refresh_token"),
-            'client_secret' : auth_info.get("client_secret")
+            'client_secret' : os.environ.get('CLIENT_SECRET')
             })
         service = build('people', 'v1', credentials=creds)
 
@@ -193,26 +174,27 @@ def format_date(date_string):
     return formatted_date
 
 def create_event(auth_info, res_data):
+    # os.environ["CLIENT_ID"] = "472393125983-vhdijrojcjtj8n0h1dvcpejghn3td3k3.apps.googleusercontent.com"
+    # os.environ["CLIENT_SECRET"] = "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"
     try:
         creds = Credentials.from_authorized_user_info({
-            'access_token': auth_info.get('token'),
-            'client_id' : auth_info.get('client_id'),
-            'refresh_token' : auth_info.get('refresh_token'),
-            'client_secret' : auth_info.get('client_secret')
+            'access_token': auth_info.token,
+            'client_id' : os.environ.get('CLIENT_ID'),
+            'refresh_token' : auth_info.refresh_token,
+            'client_secret' : os.environ.get('CLIENT_SECRET')
         })
-
         service = build('calendar', 'v3', credentials=creds)
 
         event = {
-        'summary': res_data.get('title'),
+        'summary': res_data.title,
         'location': 'Conference room #1',
-        'description': res_data.get('description'),
+        'description': res_data.description,
         'start': {
-            'dateTime': format_date(res_data.get('from_time')),
+            'dateTime': format_date(res_data.from_time),
             'timeZone': 'Asia/Tashkent',
         },
         'end': {
-            'dateTime': format_date(res_data.get('to_time')),
+            'dateTime': format_date(res_data.to_time),
             'timeZone': 'Asia/Tashkent',
         },
         'reminders': {
@@ -224,8 +206,8 @@ def create_event(auth_info, res_data):
             },
         }
 
-        if res_data.get('participants'):
-            event['attendees'] = [{'email': attendee_email} for attendee_email in res_data.get('participants')]
+        if res_data.participants:
+            event['attendees'] = [{'email': attendee_email} for attendee_email in res_data.participants]
 
 
         event = service.events().insert(calendarId='primary', body=event, sendUpdates='all').execute()
@@ -270,23 +252,39 @@ def read_rooms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 #     reservations = crud.get_reservations_by_date(db, room_id, date)
 #     return reservations
 
+
+class AccessToken(BaseModel):
+    token: str
+    refresh_token: str
+
+class Reservation_data(BaseModel):
+    room_id: str
+    from_time: str
+    to_time: str
+    title: str
+    description: str
+    participants: List[str]
+    reservation_date: str
+    access_token: AccessToken
+
+
+
 @app.post("/reservations")
-async def create_reservation_endpoint(request: Request, db: Session = Depends(get_db)):
+async def create_reservation_endpoint(reservation_data: Reservation_data,db: Session = Depends(get_db)):
     try:
-        reservation_data = await request.json()
-        room_id = reservation_data.get("room_id")
-        from_time = reservation_data.get("from_time")
-        to_time = reservation_data.get("to_time")
-        title = reservation_data.get("title")
-        description = reservation_data.get("description")
-        participants = reservation_data.get("participants")
+        room_id = reservation_data.room_id
+        from_time = reservation_data.from_time
+        to_time = reservation_data.to_time
+        title = reservation_data.title
+        description = reservation_data.description
+        participants = reservation_data.participants
+        token = reservation_data.access_token
+        reservation_date = reservation_data.reservation_date
 
-        token = reservation_data.get("access_token")
-
-        reservation_date = reservation_data.get("reservation_date")
 
         reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants)
         create_event(token, reservation_data)
         return {"message": "Reservation created successfully", "reservation": reservation}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=400, detail=str(e))
