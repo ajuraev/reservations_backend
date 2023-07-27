@@ -49,10 +49,10 @@ def get_db():
 class AuthCode(BaseModel):
     code: str
 
-@app.get("/verify/")
+@app.get("/verify")
 async def verify_token(token: str = None, refresh_token: str = None):
-    # os.environ["CLIENT_ID"] = "472393125983-vhdijrojcjtj8n0h1dvcpejghn3td3k3.apps.googleusercontent.com"
-    # os.environ["CLIENT_SECRET"] = "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"
+    os.environ["CLIENT_ID"] = "472393125983-vhdijrojcjtj8n0h1dvcpejghn3td3k3.apps.googleusercontent.com"
+    os.environ["CLIENT_SECRET"] = "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"
 
     response = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'access_token': token})
     if response.status_code == 200:
@@ -174,8 +174,8 @@ def format_date(date_string):
     return formatted_date
 
 def create_event(auth_info, res_data):
-    # os.environ["CLIENT_ID"] = "472393125983-vhdijrojcjtj8n0h1dvcpejghn3td3k3.apps.googleusercontent.com"
-    # os.environ["CLIENT_SECRET"] = "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"
+    os.environ["CLIENT_ID"] = "472393125983-vhdijrojcjtj8n0h1dvcpejghn3td3k3.apps.googleusercontent.com"
+    os.environ["CLIENT_SECRET"] = "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"
     try:
         creds = Credentials.from_authorized_user_info({
             'access_token': auth_info.token,
