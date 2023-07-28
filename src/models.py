@@ -41,6 +41,7 @@ class Reservation(Base):
     from_time = Column(String)
     to_time = Column(String)
     room_id = Column(Integer, ForeignKey("rooms.id"))
+    created_by = Column(String)
 
     room = relationship("Room", back_populates="reservations")
     participants = relationship(

@@ -22,8 +22,8 @@ def get_reservations_by_room(db: Session, room_id: int, all: bool):
 def get_reservations_by_date(db: Session, room_id: int, date: str):
     return db.query(models.Reservation).join(models.Reservation.room).filter(models.Room.id == room_id, models.Reservation.date == date).all()
 
-def create_reservation(db: Session, room_id: int, from_time: str, to_time: str, title: str, description: str, reservation_date: date, participant_emails: List[str]):
-    reservation = models.Reservation(room_id=room_id, from_time=from_time, to_time=to_time, date=reservation_date, title=title, description=description)
+def create_reservation(db: Session, room_id: int, from_time: str, to_time: str, title: str, description: str, reservation_date: date, participant_emails: List[str], created_by: str):
+    reservation = models.Reservation(room_id=room_id, from_time=from_time, to_time=to_time, date=reservation_date, title=title, description=description, created_by=created_by)
     db.add(reservation)
     db.commit()
 

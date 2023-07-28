@@ -1,9 +1,11 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, status, Query
+from fastapi import Depends, FastAPI, HTTPException, Request, status, Query, Security
 from sqlalchemy.orm import Session
 from datetime import date
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_login.exceptions import InvalidCredentialsException
 from fastapi_login import LoginManager
+from fastapi.security import OAuth2PasswordBearer
+
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
@@ -14,7 +16,6 @@ import requests
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request as RequestAuth
 from google.oauth2.credentials import Credentials
-from starlette.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from google_auth_oauthlib.flow import Flow
 from starlette.responses import JSONResponse
@@ -81,8 +82,10 @@ async def get_google_token(auth_code: AuthCode):
         #http://localhost:3000
         flow.fetch_token(code=auth_code.code)
 
-        credentials = flow.credentials
 
+        
+
+        credentials = flow.credentials
         return JSONResponse(content={
             'token': credentials.token,
             'refresh_token': credentials.refresh_token,
@@ -278,13 +281,52 @@ async def create_reservation_endpoint(reservation_data: Reservation_data,db: Ses
         title = reservation_data.title
         description = reservation_data.description
         participants = reservation_data.participants
-        token = reservation_data.access_token
+        access_token = reservation_data.access_token
         reservation_date = reservation_data.reservation_date
+ 
+        response = requests.get('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', 
+                                headers={'Authorization': f'Bearer {access_token.token}'})
+        userinfo = response.json()
+        email = userinfo['email']
+        #print(userinfo)
 
 
-        reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants)
-        create_event(token, reservation_data)
+        reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants, email)
+        create_event(access_token, reservation_data)
         return {"message": "Reservation created successfully", "reservation": reservation}
     except Exception as e:
         print(e)
         raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+# Delete endpoint
+@app.delete("/reservations/{reservation_id}")
+async def delete_reservation(
+    reservation_id: int, 
+    token: str,
+    db: Session = Depends(get_db), 
+    ):    
+    reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
+
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    response = requests.get('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', 
+                                headers={'Authorization': f'Bearer {token}'})
+    if not response.ok:
+        raise HTTPException(status_code=400, detail="Failed to get user info")
+    decoded_token = response.json()
+    if 'email' in decoded_token:
+        created_by = decoded_token['email']
+    else:
+        raise HTTPException(status_code=403, detail="Invalid token")
+    
+    if reservation.created_by != created_by:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this reservation")
+
+    db.delete(reservation)
+    db.commit()
+
+    return {"message": "Reservation deleted successfully"}

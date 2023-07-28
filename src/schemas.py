@@ -22,6 +22,7 @@ class ReservationBase(BaseModel):
     title: str
     description: str
     participants: List[Participant] = []
+    created_by: str
 
 
 class Reservation(ReservationBase):
