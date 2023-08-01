@@ -156,23 +156,17 @@ def get_user_emails(auth_info):
         print(e)
 
 def format_date(date_string):
-        # your date string
-    #date_string = 'Wed Jul 26 2023 17:00:00 GMT+0300 (GMT+03:00)'
-
-    # strip off the '(GMT+03:00)' part
-    date_string = date_string.split(' (')[0]
-
     # parse the date string into a datetime object
-    date = datetime.strptime(date_string, '%a %b %d %Y %H:%M:%S %Z%z')
+    date = datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+    # assuming the date_string is in UTC, convert it to a naive datetime object (removing timezone info)
+    date = date.replace(tzinfo=pytz.UTC)
 
     # convert the datetime object to the desired timezone
     date = date.astimezone(pytz.timezone('Asia/Tashkent'))
 
     # format the datetime object as a string
-    formatted_date = date.strftime('%Y-%m-%dT%H:%M:%S%z')
-
-    # insert the colon for the timezone offset
-    formatted_date = formatted_date[:-2] + ':' + formatted_date[-2:]
+    formatted_date = date.isoformat()
 
     return formatted_date
 
@@ -288,7 +282,6 @@ async def create_reservation_endpoint(reservation_data: Reservation_data,db: Ses
                                 headers={'Authorization': f'Bearer {access_token.token}'})
         userinfo = response.json()
         email = userinfo['email']
-        #print(userinfo)
 
 
         reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants, email)
