@@ -54,13 +54,30 @@ class AuthCode(BaseModel):
 async def verify_token(token: str = None, refresh_token: str = None):
     os.environ["CLIENT_ID"] = "584370108370-gu51j6u432c3gdicmu723dnei97en9ai.apps.googleusercontent.com"
     os.environ["CLIENT_SECRET"] = "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"
-
+    
     response = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'access_token': token})
+
     if response.status_code == 200:
         users = get_user_emails({"token": token, "refresh_token": refresh_token})
         return {"users": users}
     else:
-        raise HTTPException(status_code=400, detail="Token is invalid")
+        if refresh_token:
+            data = {
+                'client_id': os.environ["CLIENT_ID"],
+                'client_secret': os.environ["CLIENT_SECRET"],
+                'refresh_token': refresh_token,
+                'grant_type': 'refresh_token',
+            }
+            response = requests.post('https://oauth2.googleapis.com/token', data=data)
+            
+            if response.status_code == 200:
+                new_token = response.json().get('access_token')
+                users = get_user_emails({"token": new_token, "refresh_token": refresh_token})
+                return {"users": users, "access_token": new_token}
+            else:
+                raise HTTPException(status_code=400, detail="Failed to refresh token")
+        else:
+            raise HTTPException(status_code=400, detail="Token is invalid")
     
 @app.post("/auth/google")
 async def get_google_token(auth_code: AuthCode):
@@ -76,6 +93,7 @@ async def get_google_token(auth_code: AuthCode):
                 "https://www.googleapis.com/auth/calendar.events",
                 "openid"
             ],
+            # redirect_uri='http://localhost:5173'
             redirect_uri='https://booking.safiabakery.uz'
         )
         #https://reservations-front.vercel.app
@@ -282,6 +300,7 @@ async def create_reservation_endpoint(reservation_data: Reservation_data,db: Ses
                                 headers={'Authorization': f'Bearer {access_token.token}'})
         userinfo = response.json()
         email = userinfo['email']
+        #print(userinfo)
 
 
         reservation = crud.create_reservation(db, room_id, from_time, to_time, title, description, reservation_date, participants, email)
