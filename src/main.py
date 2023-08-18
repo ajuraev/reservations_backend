@@ -100,7 +100,7 @@ async def get_google_token(auth_code: AuthCode):
         #http://localhost:3000
         flow.fetch_token(code=auth_code.code)
 
-
+        #1
         
 
         credentials = flow.credentials
